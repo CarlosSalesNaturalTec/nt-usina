@@ -71,59 +71,62 @@ projeto/
 
 ## Convenção de Status do Backlog
 
-Cada item do `indice.json` possui um campo `status` com os seguintes valores possíveis:
-
 | Status | Significado |
 |---|---|
 | `nao_iniciada` | Aguardando ser selecionada pelo Orquestrador |
 | `em_desenvolvimento` | Branch criada, Coding Agent em execução |
-| `desenvolvimento_concluido` | Código implementado, aguardando testes |
+| `desenvolvimento_concluido` | Código implementado, aguardando Testing Agent |
 | `em_testes` | Testing Agent em execução |
 | `concluida` | Aprovada em testes, PR merged em main |
-| `em_recuperacao` | Item interrompido por falha; Orquestrador avalia retomada ou reset |
-| `bloqueada` | Dependência não resolvida ou erro crítico que exige intervenção humana |
+| `em_recuperacao` | Interrompida; Orquestrador avalia retomada ou reset para `nao_iniciada` |
+| `bloqueada` | Erro crítico que exige intervenção humana |
 
 ---
 
 ## Fluxo de Dados entre Artefatos
 
 ```
-docs/demanda/demanda-cliente.md
+docs\demanda\demanda-cliente.md
         │
         ▼ (agente: po)
-docs/user-stories.md  ──────────────────── [modo validacao: aguarda /aprovar]
+docs\user-stories.md  ──────────────────── [modo validacao: /aprovar]
         │
         ▼ (agente: analista-requisitos)
-docs/requirements.md  ──────────────────── [modo validacao: aguarda /aprovar]
+docs\requirements.md  ──────────────────── [modo validacao: /aprovar]
         │
         ▼ (agente: arquiteto)
-docs/architecture.md ───────────────────── [modo validacao: aguarda /aprovar]
-        │
-        └──────────────────► CLAUDE.md (stack e estrutura atualizados)
+docs\architecture.md + CLAUDE.md atualizado [modo validacao: /aprovar]
         │
         ▼ (agente: po-tech-lead)
-backlog/indice.json + backlog/grupo-*.json  [modo validacao: aguarda /aprovar]
+backlog\indice.json + backlog\grupo-*.json  [modo validacao: /aprovar]
         │
-        ▼ (orquestrador — loop contínuo)
-┌───────────────────────────────────────────────────┐
-│  BOOTSTRAP: verifica itens em_recuperacao         │
-│  → branch existe? retoma : reseta p/ nao_iniciada │
-└──────────────┬────────────────────────────────────┘
-               │
-               ▼
-        ├── git-specialist → cria branch
-        ├── coding-agent   → implementa (chain-of-thought + skills)
-        ├── git-specialist → commit + push
-        └── testing-agent  → testa  ────────── [modo validacao: aguarda /aprovar]
-                │
-                ├── aprovado  → status "concluida" → próxima feature
-                └── reprovado → cria docs/bugs/bug-*.md
-                                → status "em_desenvolvimento"
-                                → volta ao coding-agent
-                                        │
-                                        ▼ (quando todas concluídas)
-                                deploy-agent → deploy para GCP
-                                             [modo validacao: aguarda /aprovar]
+        ▼ ORQUESTRADOR — loop sequencial (stateless por iteração)
+        │
+        ├─ BOOTSTRAP: verifica feature_atual em indice.json → retoma ou reseta
+        │
+        ├─ Seleciona próxima feature com status "nao_iniciada"
+        │
+        ├── Cria branch: git checkout -b feature/<grupo>-<id>-<descricao>
+        │
+        ├── Task(coding-agent)
+        │     Recebe: {feature_id, trecho_arquitetura, skills}
+        │     Produz: código em disco
+        │     Retorna: {status, resumo_curto}
+        │
+        ├── git commit + push
+        │
+        ├── Task(testing-agent)               [modo validacao: /aprovar]
+        │     Recebe: {feature_id, criterios_aceite}
+        │     Produz: relatório em docs\testes\
+        │     Retorna: {status: aprovado|reprovado, resumo_curto}
+        │
+        ├── APROVADO  → status "concluida" → PR → próxima feature
+        └── REPROVADO → cria docs\bugs\bug-*.md
+                      → Task(coding-agent, modo: "corrigir")
+                      → repete ciclo de testes
+                                │
+                                ▼ (todas as features concluídas)
+                        Task(deploy-agent)   [modo validacao: /aprovar]
 ```
 
 ---
@@ -135,40 +138,38 @@ feature/<grupo>-<id>-<descricao-curta>
 
 Exemplos:
   feature/auth-001-login-jwt
-  feature/dashboard-003-relatorio-mensal
-  feature/api-007-endpoint-usuarios
+  feature/api-003-endpoint-usuarios
+  feature/dashboard-005-relatorio-mensal
 ```
 
 ---
 
-## Sessão TMux — Natural Tecnologia
+## Sessão Windows Terminal — Natural Tecnologia
 
-O script `scripts/tmux-fabrica.sh` monta automaticamente o ambiente de monitoramento:
+O script `scripts\Start-Usina.ps1` monta automaticamente o ambiente:
 
 ```
 ┌─────────────────────────┬──────────────────────┐
 │  PAINEL 1               │  PAINEL 2            │
-│  Claude Code CLI        │  Backlog Monitor     │
-│  (orquestrador ativo)   │  watch -n2 cat       │
-│                         │  backlog/indice.json │
+│  Claude Code CLI        │  Pipeline Monitor    │
+│  (orquestrador ativo)   │  backlog + workers   │
+│                         │  ativos em tempo real│
 ├─────────────────────────┼──────────────────────┤
 │  PAINEL 3               │  PAINEL 4            │
-│  Git log                │  Logs da aplicação   │
-│  git log --oneline      │  tail -f do projeto  │
+│  Git log --graph         │  Log da aplicação    │
 └─────────────────────────┴──────────────────────┘
 ```
 
-Iniciar com: `.\scripts\Start-Usina.ps1` (PowerShell) ou `/fabricar-tmux`
+Iniciar com: `.\scripts\Start-Usina.ps1` ou `/fabricar-tmux`
 
 ---
 
 ## Notas de Operação
 
-- O arquivo `CLAUDE.md` na raiz é **lido automaticamente** pelo Claude Code em toda sessão. Deve conter o contexto técnico atual do projeto.
-- Os agentes em `.claude/agents/` são invocados pelo Orquestrador via `Task()`. Cada agente tem acesso apenas ao conjunto de ferramentas definido em seu próprio arquivo.
-- As Skills em `.claude/skills/` **não são agentes** — são arquivos de contexto referenciados com `@` nos prompts dos agentes que precisam desse conhecimento.
-- O `backlog/indice.json` é o **estado central** do pipeline. Toda decisão do Orquestrador parte da leitura deste arquivo.
-- O campo `operacao.modo` no `CLAUDE.md` controla se o pipeline pausa para validação humana (`validacao`) ou roda de forma contínua (`autonomo`).
-- O arquivo `docs/pipeline.log` registra todas as ações do Orquestrador em modo `autonomo`, permitindo auditoria posterior.
+- `CLAUDE.md` é lido automaticamente pelo Claude Code em toda sessão
+- Agentes em `.claude/agents/` são invocados via `Task()` pelo Orquestrador
+- Skills em `.claude/skills/` são contexto injetável — não são agentes
+- `backlog\indice.json` é o estado central; `feature_atual` rastreia a feature em execução
+- `docs\pipeline.log` registra todas as ações em modo `autonomo`
 
 *Natural Tecnologia — Fábrica de Software IA*

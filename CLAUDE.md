@@ -99,7 +99,50 @@ operacao:
 
 ---
 
-## 6. Estado do Pipeline
+## 6. Execução Sequencial e Contexto
+
+> **Fase atual:** execução sequencial — uma feature por vez.
+> Paralelismo e git worktrees são previstos para fases futuras após estabilização do pipeline.
+
+### Princípio do mínimo contexto necessário
+
+Cada agente recebe **apenas** o que precisa para sua tarefa. Nunca o projeto inteiro.
+
+| Agente | Recebe | NÃO recebe |
+|---|---|---|
+| PO | Demanda do cliente | Código, arquitetura, backlog |
+| Analista | `user-stories.md` | Código, backlog |
+| Arquiteto | `requirements.md` | Código, backlog |
+| PO/Tech Lead | `architecture.md` | Código, stories completas |
+| Coding Agent | Feature específica + trecho relevante da arquitetura + skills da stack | Outras features, bugs de outras features |
+| Testing Agent | Feature específica + critérios de aceite | Backlog completo, arquitetura |
+| Deploy Agent | Checklist de deploy + configs de ambiente | Código-fonte, histórico de bugs |
+
+### Arquitetura de contexto do Orquestrador
+
+O Orquestrador usa **Task() para todos os sub-agentes** e **auto-reinício a cada 10 features**:
+
+**Por iteração — o Orquestrador lê APENAS:**
+- `backlog\indice.json` — estado do pipeline
+- Campo `operacao.modo` do `CLAUDE.md` — `validacao` ou `autonomo`
+
+**Por iteração — o Orquestrador dispara via Task():**
+- `Task(coding-agent, {feature_id, trecho_arquitetura, skills_necessarias})`
+- `Task(testing-agent, {feature_id, criterios_aceite})`
+- Recebe de volta **apenas**: `{feature_id, status_resultado, resumo_curto}`
+- Sub-agentes **nunca** retornam código, logs completos ou artefatos volumosos
+- Todo conteúdo produzido fica em disco (`docs\bugs\`, `docs\testes\`)
+
+**Auto-reinício a cada 10 features processadas:**
+- "Processada" = status alterado para `concluida` ou `bloqueada` nesta sessão
+- Ao atingir o limiar: grava checkpoint em `indice.json` → encerra → re-invoca `/fabricar-software --retomar`
+- Nova instância começa com context window zerada e continua do ponto exato
+
+**Estado do pipeline vive em disco — nunca na memória do processo.**
+
+---
+
+## 7. Estado do Pipeline
 
 > Atualizado automaticamente pelo Orquestrador.
 
@@ -107,88 +150,90 @@ operacao:
 pipeline:
   fase_atual: [planejamento | desenvolvimento | testes | deploy | concluido]
   ultima_atualizacao: [TIMESTAMP]
+  ultimo_checkpoint: [TIMESTAMP]
   features_total: 0
   features_concluidas: 0
   features_em_andamento: 0
   features_em_recuperacao: 0
   features_bloqueadas: 0
-  ultimo_checkpoint: [TIMESTAMP — usado para recovery após interrupção]
+  feature_atual: null         # ID da feature em execução no momento
+  features_processadas_sessao: 0  # Contador para auto-reinício (limiar: 10)
 ```
 
 ---
 
-## 7. Caminhos de Artefatos
+## 8. Caminhos de Artefatos
 
 ```yaml
 artefatos:
-  demanda_cliente:   docs/demanda/demanda-cliente.md
-  user_stories:      docs/user-stories.md
-  requirements:      docs/requirements.md
-  architecture:      docs/architecture.md
-  backlog_indice:    backlog/indice.json
-  backlog_grupos:    backlog/grupo-*.json
-  bugs:              docs/bugs/
-  planos_teste:      docs/testes/
+  demanda_cliente:   docs\demanda\demanda-cliente.md
+  user_stories:      docs\user-stories.md
+  requirements:      docs\requirements.md
+  architecture:      docs\architecture.md
+  backlog_indice:    backlog\indice.json
+  backlog_grupos:    backlog\grupo-*.json
+  bugs:              docs\bugs\
+  planos_teste:      docs\testes\
+  pipeline_log:      docs\pipeline.log
 ```
 
 ---
 
-## 7. Regras Globais para Todos os Agentes
+## 9. Regras Globais para Todos os Agentes
 
-### 7.1 Antes de qualquer ação
+### 9.1 Antes de qualquer ação
 - Ler este arquivo (`CLAUDE.md`) para garantir contexto atualizado
 - Verificar o artefato de entrada definido para sua etapa
 - Confirmar que o artefato de entrada existe antes de prosseguir
+- Receber apenas o contexto mínimo necessário (ver tabela na seção 6)
 
-### 7.2 Ao produzir artefatos
-- Salvar sempre no caminho definido na seção 7
+### 9.2 Ao produzir artefatos
+- Salvar sempre no caminho definido na seção 8
 - Nunca sobrescrever sem verificar se existe versão anterior
 - Incluir timestamp e versão no cabeçalho de documentos `.md`
 
-### 7.3 Qualidade de código
+### 9.3 Qualidade de código
 - Aplicar sempre os princípios definidos em `@.claude/skills/boas-praticas.md`
 - Toda função/método deve ter responsabilidade única (SRP)
 - Código deve ser autoexplicativo; comentários apenas para decisões não óbvias
 - Nunca deixar `console.log`, `dd()`, `var_dump()` ou código de debug em commits
 
-### 7.4 Sobre o backlog
-- O arquivo `backlog/indice.json` é a **única fonte de verdade** sobre o estado do pipeline
+### 9.4 Sobre o backlog
+- O arquivo `backlog\indice.json` é a **única fonte de verdade** sobre o estado do pipeline
 - Nenhum agente altera o status de uma feature sem concluir sua tarefa por completo
-- Status só avança — nunca retrocede sem criação de registro em `docs/bugs/`
+- Status só avança — nunca retrocede sem criação de registro em `docs\bugs\`
 - Status `em_recuperacao` indica item interrompido; Orquestrador decide entre retomar ou resetar
 
-### 7.5 Comunicação entre agentes
+### 9.5 Comunicação entre agentes
 - Agentes não se comunicam diretamente — toda comunicação é via arquivos em disco
 - O Orquestrador é o único agente que lê o backlog e aciona outros agentes
 - Agentes especializados (PO, Analista, etc.) não acionam outros agentes
 
-### 7.6 Recovery após interrupção
-- Ao iniciar, o Orquestrador sempre verifica itens com status `em_desenvolvimento` ou `em_testes`
-- Se branch existe para o item → retoma do último commit (re-executa agente com contexto do que já existe)
-- Se branch não existe → reseta status para `nao_iniciada` e reinicia do zero
+### 9.6 Recovery após interrupção
+- Ao iniciar, o Orquestrador verifica `feature_atual` no `indice.json`
+- Se `feature_atual` não for null → feature estava em execução quando o processo foi interrompido
+  - Status `em_desenvolvimento` → re-executa coding-agent com contexto do que já existe em disco
+  - Status `em_testes` → re-executa testing-agent
+  - Status `em_recuperacao` → Orquestrador decide entre retomar ou resetar para `nao_iniciada`
 - Toda mudança de status grava `ultimo_checkpoint` imediatamente no `indice.json`
 
-### 7.7 Modo de operação
+### 9.7 Modo de operação
 - Verificar `operacao.modo` neste arquivo antes de prosseguir entre etapas
 - Em modo `validacao`: exibir resumo do artefato gerado e aguardar `/aprovar` ou `/reprovar`
-- Em modo `autonomo`: prosseguir automaticamente; registrar log de cada etapa em `docs/pipeline.log`
+- Em modo `autonomo`: prosseguir automaticamente; registrar log em `docs\pipeline.log`
 
 ---
 
-## 8. TMux — Sessão de Trabalho
-
-A sessão TMux da Natural Tecnologia organiza o ambiente de monitoramento em 4 painéis:
+## 10. Windows Terminal — Sessão de Trabalho
 
 ```
 ┌─────────────────────────┬──────────────────────┐
 │  PAINEL 1               │  PAINEL 2            │
-│  Claude Code CLI        │  Backlog Monitor     │
-│  (orquestrador ativo)   │  watch -n2 cat       │
-│                         │  backlog/indice.json │
+│  Claude Code CLI        │  Pipeline Monitor    │
+│  (orquestrador ativo)   │  backlog + workers   │
 ├─────────────────────────┼──────────────────────┤
 │  PAINEL 3               │  PAINEL 4            │
-│  Git log                │  Logs da aplicação   │
-│  git log --oneline      │  tail -f do projeto  │
+│  Git log                │  Log da aplicação    │
 └─────────────────────────┴──────────────────────┘
 ```
 
@@ -197,7 +242,7 @@ A sessão TMux da Natural Tecnologia organiza o ambiente de monitoramento em 4 p
 
 ---
 
-## 9. Skills Disponíveis
+## 11. Skills Disponíveis
 
 | Skill | Arquivo | Quando usar |
 |---|---|---|
@@ -208,11 +253,11 @@ A sessão TMux da Natural Tecnologia organiza o ambiente de monitoramento em 4 p
 | Baileys (WhatsApp) | `@.claude/skills/stack-baileys.md` | Integrações WhatsApp |
 | LangChain | `@.claude/skills/stack-langchain.md` | Integrações com LLMs |
 
-> Para usar uma skill, inclua no prompt do agente: `Consulte @.claude/skills/nome-da-skill.md`
+> Para usar uma skill: `Consulte @.claude/skills/nome-da-skill.md`
 
 ---
 
-## 10. Configurações de Ambiente
+## 12. Configurações de Ambiente
 
 > Preenchido durante setup do projeto. Nunca commitar valores reais.
 
@@ -233,14 +278,14 @@ variaveis_de_ambiente:
 
 ---
 
-## 11. Histórico de Decisões Arquiteturais (ADR)
-
-> Registrar aqui decisões importantes que impactam todo o projeto.
-> Formato: data | decisão | justificativa
+## 13. Histórico de Decisões Arquiteturais (ADR)
 
 | Data | Decisão | Justificativa |
 |---|---|---|
-| — | — | — |
+| — | GitHub Flow | Simplicidade: main + feature branches |
+| — | Execução sequencial (1 feature por vez) | Simplicidade na fase inicial; paralelismo previsto para fases futuras |
+| — | Orquestrador via Task() + auto-reinício a cada 10 features | Task() isola sub-agentes; auto-reinício previne degradação de contexto em projetos longos |
+| — | Sub-agentes retornam apenas metadados | Evita que resultados volumosos contaminem o contexto do Orquestrador |
 
 ---
 

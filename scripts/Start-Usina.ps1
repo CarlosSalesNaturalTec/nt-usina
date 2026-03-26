@@ -112,48 +112,77 @@ Write-Host ''
 Set-Location '$ProjectDir'
 "@
 
-# PAINEL 2 — Backlog Monitor (atualiza a cada 2 segundos)
+# PAINEL 2 — Pipeline Monitor (backlog + feature atual, atualiza a cada 2s)
 $Cmd2 = @"
 Set-Location '$ProjectDir'
 while (`$true) {
     Clear-Host
-    Write-Host '[ BACKLOG — nt-usina ]' -ForegroundColor Cyan
+    Write-Host '[ PIPELINE MONITOR — nt-usina ]' -ForegroundColor Cyan
     Write-Host (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -ForegroundColor Gray
     Write-Host '-------------------------------------------'
     if (Test-Path '$BacklogPath') {
         try {
             `$json = Get-Content '$BacklogPath' -Raw -Encoding UTF8 | ConvertFrom-Json
-            Write-Host ('Status pipeline: ' + `$json.status) -ForegroundColor Yellow
-            Write-Host ('Features total:  ' + `$json.features.Count)
+
+            # Status geral
+            Write-Host ('Pipeline : ' + `$json.status) -ForegroundColor Yellow
+            Write-Host ('Fase     : ' + `$json.pipeline_fase_atual) -ForegroundColor Gray
+            Write-Host ('Modo     : ' + `$json.operacao_modo) -ForegroundColor Gray
+            Write-Host ''
+
+            # Feature em execução no momento
+            Write-Host '--- Em execução ---' -ForegroundColor Cyan
+            if (`$json.feature_atual) {
+                `$fa = `$json.features | Where-Object { `$_.id -eq `$json.feature_atual }
+                if (`$fa) {
+                    Write-Host ('  [' + `$fa.id + '] ' + `$fa.nome) -ForegroundColor Cyan
+                    Write-Host ('  Status: ' + `$fa.status) -ForegroundColor Yellow
+                } else {
+                    Write-Host ('  ' + `$json.feature_atual) -ForegroundColor Cyan
+                }
+            } else {
+                Write-Host '  Nenhuma feature em execução.' -ForegroundColor DarkGray
+            }
+            Write-Host ''
+
+            # Resumo por status
+            Write-Host '--- Resumo ---' -ForegroundColor Cyan
             `$grupos = `$json.features | Group-Object status
             foreach (`$g in `$grupos) {
                 `$cor = switch (`$g.Name) {
-                    'concluida'               { 'Green' }
-                    'em_desenvolvimento'      { 'Cyan' }
-                    'em_testes'               { 'Yellow' }
-                    'bloqueada'               { 'Red' }
-                    'em_recuperacao'          { 'Magenta' }
-                    default                   { 'Gray' }
+                    'concluida'                { 'Green' }
+                    'em_desenvolvimento'       { 'Cyan' }
+                    'desenvolvimento_concluido'{ 'Blue' }
+                    'em_testes'                { 'Yellow' }
+                    'bloqueada'                { 'Red' }
+                    'em_recuperacao'           { 'Magenta' }
+                    default                    { 'DarkGray' }
                 }
-                Write-Host ('  ' + `$g.Name + ': ' + `$g.Count) -ForegroundColor `$cor
+                Write-Host ('  ' + `$g.Name.PadRight(28) + `$g.Count) -ForegroundColor `$cor
             }
             Write-Host ''
-            Write-Host '--- Features ---'
+
+            # Lista completa de features
+            Write-Host '--- Features ---' -ForegroundColor Cyan
             foreach (`$f in `$json.features) {
                 `$cor = switch (`$f.status) {
-                    'concluida'          { 'Green' }
-                    'em_desenvolvimento' { 'Cyan' }
-                    'em_testes'         { 'Yellow' }
-                    'bloqueada'         { 'Red' }
-                    default             { 'Gray' }
+                    'concluida'                { 'Green' }
+                    'em_desenvolvimento'       { 'Cyan' }
+                    'desenvolvimento_concluido'{ 'Blue' }
+                    'em_testes'                { 'Yellow' }
+                    'bloqueada'                { 'Red' }
+                    'em_recuperacao'           { 'Magenta' }
+                    default                    { 'DarkGray' }
                 }
-                Write-Host ('  [' + `$f.id + '] ' + `$f.nome + ' → ' + `$f.status) -ForegroundColor `$cor
+                Write-Host ('  [' + `$f.id + '] ' + `$f.nome.PadRight(30) + ' → ' + `$f.status) -ForegroundColor `$cor
             }
         } catch {
+            Write-Host 'Erro ao ler indice.json — aguardando...' -ForegroundColor Red
             Get-Content '$BacklogPath' -Encoding UTF8
         }
     } else {
-        Write-Host 'indice.json ainda não gerado.' -ForegroundColor Gray
+        Write-Host 'indice.json ainda nao gerado.' -ForegroundColor DarkGray
+        Write-Host 'Execute /fabricar-software para iniciar o pipeline.' -ForegroundColor Yellow
     }
     Start-Sleep 2
 }
