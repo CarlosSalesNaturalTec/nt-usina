@@ -248,6 +248,7 @@ artefatos:
 |---|---|---|
 | Boas Práticas | `@.claude/skills/boas-praticas.md` | Todo agente de codificação |
 | Laravel + Vue.js | `@.claude/skills/stack-laravel-vue.md` | Projetos com essa stack |
+| JavaScript / Node.js | `@.claude/skills/stack-javascript.md` | Projetos JS/Node.js |
 | GCP | `@.claude/skills/stack-gcp.md` | Deploy e infraestrutura GCP |
 | Python + FastAPI | `@.claude/skills/stack-python.md` | Projetos Python |
 | Baileys (WhatsApp) | `@.claude/skills/stack-baileys.md` | Integrações WhatsApp |

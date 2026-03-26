@@ -23,6 +23,7 @@ projeto/
 │   ├── skills/                        # Conhecimento especializado injetável
 │   │   ├── boas-praticas.md           # SOLID, Design Patterns, Clean Code
 │   │   ├── stack-laravel-vue.md       # Laravel + Vue.js + PostgreSQL
+│   │   ├── stack-javascript.md        # JavaScript + Node.js + Express
 │   │   ├── stack-gcp.md               # Google Cloud Platform
 │   │   ├── stack-python.md            # Python + FastAPI
 │   │   ├── stack-baileys.md           # WhiskeySockets Baileys (WhatsApp)
