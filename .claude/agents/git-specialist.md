@@ -70,11 +70,16 @@ Commita todo o trabalho da feature e faz push para o remoto.
    git status --porcelain
    SE não houver mudanças: retornar aviso (nada a commitar)
 
-3. Verificar se há arquivos de debug ou temporários indesejados:
-   Procurar por: console.log, dd(), var_dump(), .env (não deve ser commitado)
-   SE encontrar: retornar erro listando os arquivos problemáticos
+3. [SEGURANÇA — ANTES do staging] Verificar arquivos problemáticos no working directory:
+   a) Arquivos proibidos (NUNCA commitar):
+      Verificar existência de: .env, .env.local, *.key, *.pem
+      SE encontrar: retornar erro listando os arquivos — NÃO prosseguir
 
-4. Adicionar todos os arquivos:
+   b) Padrões de debug no código (nos arquivos modificados):
+      Procurar por: console.log(, dd(, var_dump(, print_r(, die(, exit(
+      SE encontrar: retornar erro com arquivo + linha — NÃO prosseguir
+
+4. Adicionar arquivos ao staging (apenas após a checklist de segurança passar):
    git add .
 
 5. Montar mensagem de commit no padrão Conventional Commits:

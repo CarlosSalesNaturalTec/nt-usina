@@ -54,18 +54,34 @@ Se encontrar problemas, cria o bug report e retorna `reprovado`.
 
 ### Etapa 2 — Executar testes automatizados
 
+> **CONTROLE DE OUTPUT — OBRIGATÓRIO**
+> Testes verbosos podem gerar dezenas de milhares de tokens. Siga estas regras:
+> - Executar sempre em modo compacto/resumido
+> - Capturar **apenas** falhas — não listar testes que passam
+> - Se o output exceder 150 linhas: salvar em `docs/testes/output-<feature_id>.txt` e trabalhar apenas com o resumo
+> - Parar na primeira falha crítica quando possível (`--stop-on-failure`, `--bail`, `-x`)
+
 ```
-1. Rodar suite de testes da feature:
-   → Ex: php artisan test --filter=NomeDaFeatureTest
-   → Ex: npm run test -- --grep "NomeDaFeature"
+1. Rodar suite de testes da feature (modo compacto):
+   PHP/Laravel:  php artisan test --filter=NomeDaFeatureTest --compact
+   Jest/Node:    npm run test -- --grep "NomeDaFeature" --verbose=false
+   pytest:       pytest tests/test_feature.py -q --tb=short
+   Vitest:       npx vitest run --reporter=verbose=false
 
-2. Rodar suite completa para verificar regressões:
-   → php artisan test (ou equivalente)
+2. SE algum teste falhar na suite da feature → anotar falhas e PARAR
+   (não executar suite completa se a feature já está reprovada)
 
-3. Registrar:
-   → Quantos testes passaram
-   → Quantos falharam
-   → Detalhes de cada falha (mensagem de erro, linha, esperado vs obtido)
+3. SE todos os testes da feature passam → rodar suite completa para verificar regressões:
+   PHP/Laravel:  php artisan test --compact --stop-on-failure
+   Jest/Node:    npm run test -- --bail --verbose=false
+   pytest:       pytest -q --tb=line -x
+   Vitest:       npx vitest run --reporter=dot
+
+4. Registrar APENAS:
+   → Total de testes executados
+   → Quantos falharam (e quais)
+   → Detalhes de cada falha (mensagem, linha, esperado vs obtido) — máximo 20 linhas por falha
+   → Se output completo foi salvo em arquivo: indicar o caminho
 ```
 
 ### Etapa 3 — Verificar cobertura dos critérios de aceite
@@ -105,13 +121,16 @@ Inspecionar os arquivos criados/modificados:
 Se a feature inclui interface de usuário (frontend/UI):
 
 ```
+VERIFICAÇÃO PRÉVIA: confirmar que Claude in Chrome está disponível
+→ Se não disponível: documentar no relatório e pular esta etapa (não reprovar por isso)
+
 Usar Claude in Chrome para:
-1. Acessar a URL da feature no ambiente local
+1. Acessar a URL da feature no ambiente local (http://localhost:<PORTA>)
 2. Executar o fluxo principal descrito nos critérios de aceite
 3. Verificar comportamento visual e funcional
 4. Verificar console do browser — ausência de erros JS
 
-Registrar: screenshots ou descrição do comportamento observado
+Registrar: descrição do comportamento observado (screenshots apenas se relevante)
 ```
 
 ### Etapa 6 — Analisar logs

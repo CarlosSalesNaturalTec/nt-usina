@@ -1,6 +1,6 @@
 # /aprovar
 
-Aprova o artefato ou etapa atual e sinaliza ao Orquestrador para prosseguir.
+Aprova o artefato ou etapa atual e registra a decisão no log do pipeline.
 Disponível apenas em modo `validacao`.
 
 ## Uso
@@ -11,8 +11,22 @@ Disponível apenas em modo `validacao`.
 
 ## O que este comando faz
 
-1. Registra aprovação em `docs\pipeline.log`
-2. Orquestrador avança para a próxima etapa do pipeline
+1. Registra aprovação em `docs\pipeline.log` com timestamp
+2. Exibe instrução para continuar o pipeline
+
+## Fluxo completo em modo validação
+
+O Orquestrador **para e retorna** após cada etapa. O ciclo correto é:
+
+```
+1. Orquestrador executa uma etapa e PARA
+2. Você revisa o artefato gerado
+3. Execute /aprovar          → registra aprovação
+4. Execute /fabricar-software --retomar  → continua o pipeline
+```
+
+> **Importante:** `/aprovar` sozinho não continua o pipeline.
+> É necessário executar `/fabricar-software --retomar` em seguida.
 
 ## Quando usar
 
@@ -28,10 +42,17 @@ Após revisar e aprovar qualquer um destes artefatos ou etapas:
 | Feature testada | `docs\testes\plano-NNN-NNN.md` |
 | Pré-deploy | Checklist de deploy |
 
-## Observação
+## O que é registrado no log
 
-Só funciona quando o Orquestrador está aguardando aprovação (modo `validacao`).
-Em modo `autonomo`, este comando não tem efeito — o pipeline já avança automaticamente.
+```
+[YYYY-MM-DD HH:MM:SS] [INFO] [HUMANO] APROVADO: <etapa> — operador aprovou e solicitou continuação
+```
+
+## Próximo passo após /aprovar
+
+```
+/fabricar-software --retomar
+```
 
 ## Ver modo atual
 

@@ -6,6 +6,13 @@
 > **Fábrica de Software:** Natural Tecnologia
 > **Repositório:** CarlosSalesNaturalTec/nt-usina
 > **Modelo de execução:** Claude Code CLI — Windows (PowerShell)
+>
+> **Arquitetura de contexto:**
+> Os agentes (`.claude/agents/`), comandos (`.claude/commands/`) e skills (`.claude/skills/`)
+> vivem no **contexto global do usuário** (`~/.claude/`) e são reutilizáveis em múltiplos projetos.
+> Este `CLAUDE.md` é o único artefato da fábrica que fica **dentro do repositório do projeto**,
+> personalizando o comportamento da fábrica para este projeto específico.
+> Veja `README.md` para instruções de configuração inicial.
 
 ---
 
@@ -242,19 +249,43 @@ artefatos:
 
 ---
 
-## 11. Skills Disponíveis
+## 11. Skills e Comandos Disponíveis
+
+### Skills (guias técnicos para agentes de codificação)
 
 | Skill | Arquivo | Quando usar |
 |---|---|---|
-| Boas Práticas | `@.claude/skills/boas-praticas.md` | Todo agente de codificação |
-| Laravel + Vue.js | `@.claude/skills/stack-laravel-vue.md` | Projetos com essa stack |
-| JavaScript / Node.js | `@.claude/skills/stack-javascript.md` | Projetos JS/Node.js |
-| GCP | `@.claude/skills/stack-gcp.md` | Deploy e infraestrutura GCP |
-| Python + FastAPI | `@.claude/skills/stack-python.md` | Projetos Python |
-| Baileys (WhatsApp) | `@.claude/skills/stack-baileys.md` | Integrações WhatsApp |
-| LangChain | `@.claude/skills/stack-langchain.md` | Integrações com LLMs |
+| Boas Práticas | `~/.claude/skills/boas-praticas.md` | Todo agente de codificação |
+| Laravel + Vue.js | `~/.claude/skills/stack-laravel-vue.md` | Projetos com essa stack |
+| JavaScript / Node.js | `~/.claude/skills/stack-javascript.md` | Projetos JS/Node.js |
+| GCP | `~/.claude/skills/stack-gcp.md` | Deploy e infraestrutura GCP |
+| Python + FastAPI | `~/.claude/skills/stack-python.md` | Projetos Python |
+| Baileys (WhatsApp) | `~/.claude/skills/stack-baileys.md` | Integrações WhatsApp |
+| LangChain | `~/.claude/skills/stack-langchain.md` | Integrações com LLMs |
 
-> Para usar uma skill: `Consulte @.claude/skills/nome-da-skill.md`
+> Agentes leem skills via ferramenta `Read` no caminho `~/.claude/skills/<nome>.md`
+
+### Comandos disponíveis (slash commands)
+
+| Comando | Descrição |
+|---|---|
+| `/fabricar-software` | Entry point — inicia ou retoma o pipeline |
+| `/aprovar` | Aprova etapa atual (modo validacao) |
+| `/reprovar <motivo>` | Reprova etapa atual com motivo (modo validacao) |
+| `/set-modo validacao\|autonomo` | Altera modo de operação |
+| `/po-processar-demanda` | Executa Agente PO isoladamente |
+| `/gerar-requirements` | Executa Analista de Requisitos |
+| `/gerar-arquitetura` | Executa Arquiteto |
+| `/gerar-backlog` | Executa PO/Tech Lead |
+| `/gerar-contextDoc` | Gera documento de contexto consolidado |
+| `/feature-desenvolver <id>` | Desenvolve feature manualmente |
+| `/testar-feature <id>` | Testa feature manualmente |
+| `/feature-ajustar <id> "<desc>"` | Ajuste pós-merge |
+| `/versionamento-newBranch <id>` | Cria branch de feature |
+| `/versionamento-branch-push <id>` | Commit + push da feature |
+| `/versionamento-release patch\|minor\|major` | Cria tag de release |
+| `/deploy` | Deploy em produção |
+| `/fabricar-tmux` | Abre ambiente de 4 painéis |
 
 ---
 
