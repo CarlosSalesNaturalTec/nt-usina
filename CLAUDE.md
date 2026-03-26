@@ -4,7 +4,8 @@
 > Ele define o contexto, regras e convenções que todos os agentes devem seguir.
 >
 > **Fábrica de Software:** Natural Tecnologia
-> **Modelo de execução:** Claude Code CLI — 100% local
+> **Repositório:** CarlosSalesNaturalTec/nt-usina
+> **Modelo de execução:** Claude Code CLI — Windows (PowerShell)
 
 ---
 
@@ -191,7 +192,7 @@ A sessão TMux da Natural Tecnologia organiza o ambiente de monitoramento em 4 p
 └─────────────────────────┴──────────────────────┘
 ```
 
-> Para iniciar a sessão: `bash scripts/tmux-fabrica.sh`
+> Para iniciar a sessão: `.\scripts\Start-Usina.ps1` (PowerShell)
 > Ou via slash command: `/fabricar-tmux`
 
 ---

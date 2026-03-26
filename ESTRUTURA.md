@@ -46,7 +46,7 @@ projeto/
 │       └── deploy.md                  # /deploy
 │
 ├── scripts/
-│   └── tmux-fabrica.sh                # Script bash que monta a sessão TMux de 4 painéis
+│   └── Start-Usina.ps1                # Script PowerShell que abre Windows Terminal com 4 painéis
 │
 ├── docs/                              # Artefatos de planejamento (gerados pelos agentes)
 │   ├── demanda/
@@ -158,7 +158,7 @@ O script `scripts/tmux-fabrica.sh` monta automaticamente o ambiente de monitoram
 └─────────────────────────┴──────────────────────┘
 ```
 
-Iniciar com: `bash scripts/tmux-fabrica.sh` ou `/fabricar-tmux`
+Iniciar com: `.\scripts\Start-Usina.ps1` (PowerShell) ou `/fabricar-tmux`
 
 ---
 
