@@ -113,11 +113,12 @@ Write-Host ''
 Set-Location '$ProjectDir'
 "@
 
-# PAINEL 2 — Pipeline Monitor (backlog + feature atual, atualiza a cada 2s)
+# PAINEL 2 — Pipeline Monitor (backlog + feature atual, atualiza apenas quando indice.json muda)
 $Cmd2 = @"
 chcp 65001 | Out-Null
 Set-Location '$ProjectDir'
-while (`$true) {
+
+function Show-Pipeline {
     Clear-Host
     Write-Host '[ PIPELINE MONITOR — nt-usina ]' -ForegroundColor Cyan
     Write-Host (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -ForegroundColor Gray
@@ -186,7 +187,22 @@ while (`$true) {
         Write-Host 'indice.json ainda nao gerado.' -ForegroundColor DarkGray
         Write-Host 'Execute /fabricar-software para iniciar o pipeline.' -ForegroundColor Yellow
     }
-    Start-Sleep 2
+}
+
+# Exibe imediatamente ao abrir
+Show-Pipeline
+
+# FileSystemWatcher: re-exibe apenas quando indice.json for gravado
+`$watcher = New-Object System.IO.FileSystemWatcher
+`$watcher.Path = (Split-Path '$BacklogPath')
+`$watcher.Filter = 'indice.json'
+`$watcher.NotifyFilter = [System.IO.NotifyFilters]::LastWrite
+`$watcher.EnableRaisingEvents = `$true
+
+while (`$true) {
+    # Aguarda mudança com timeout de 60s (fallback caso o evento não dispare)
+    `$result = `$watcher.WaitForChanged([System.IO.WatcherChangeTypes]::Changed, 60000)
+    Show-Pipeline
 }
 "@
 
@@ -206,7 +222,7 @@ while (`$true) {
         Write-Host 'Git ainda não inicializado neste diretório.' -ForegroundColor Gray
         Write-Host 'Execute: git init' -ForegroundColor Yellow
     }
-    Start-Sleep 5
+    Start-Sleep 30
 }
 "@
 
