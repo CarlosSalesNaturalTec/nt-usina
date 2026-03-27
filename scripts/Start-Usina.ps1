@@ -226,14 +226,38 @@ while (`$true) {
 }
 "@
 
-# PAINEL 4 — Log da aplicação (tail em tempo real)
+# PAINEL 4 — Log da aplicação (ordem descendente — mais recente primeiro)
+# Atualiza apenas quando o arquivo de log é gravado (FileSystemWatcher)
 $Cmd4 = @"
 chcp 65001 | Out-Null
 Set-Location '$ProjectDir'
-Write-Host '[ LOG DA APLICACAO ]' -ForegroundColor Cyan
-Write-Host 'Monitorando: $AppLog' -ForegroundColor Gray
-Write-Host '-------------------------------------------'
-Get-Content '$AppLog' -Wait -Tail 50 -Encoding UTF8
+
+function Show-Log {
+    Clear-Host
+    Write-Host '[ LOG DA APLICACAO — mais recente primeiro ]' -ForegroundColor Cyan
+    Write-Host ('Monitorando: $AppLog') -ForegroundColor Gray
+    Write-Host (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') -ForegroundColor Gray
+    Write-Host '-------------------------------------------'
+    if (Test-Path '$AppLog') {
+        `$linhas = Get-Content '$AppLog' -Tail 200 -Encoding UTF8
+        `$linhas[(`$linhas.Count - 1)..0] | ForEach-Object { Write-Host `$_ }
+    } else {
+        Write-Host 'Arquivo de log ainda não existe.' -ForegroundColor DarkGray
+    }
+}
+
+Show-Log
+
+`$watcher = New-Object System.IO.FileSystemWatcher
+`$watcher.Path = (Split-Path '$AppLog')
+`$watcher.Filter = (Split-Path '$AppLog' -Leaf)
+`$watcher.NotifyFilter = [System.IO.NotifyFilters]::LastWrite
+`$watcher.EnableRaisingEvents = `$true
+
+while (`$true) {
+    `$result = `$watcher.WaitForChanged([System.IO.WatcherChangeTypes]::Changed, 60000)
+    Show-Log
+}
 "@
 
 # -----------------------------------------------------------------------------
