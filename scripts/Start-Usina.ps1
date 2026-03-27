@@ -129,8 +129,68 @@ function Show-Pipeline {
 
             # Status geral
             Write-Host ('Pipeline : ' + `$json.status) -ForegroundColor Yellow
-            Write-Host ('Fase     : ' + `$json.pipeline_fase_atual) -ForegroundColor Gray
+            Write-Host ('Fase     : ' + `$json.pipeline.fase_atual) -ForegroundColor Gray
             Write-Host ('Modo     : ' + `$json.operacao_modo) -ForegroundColor Gray
+            Write-Host ''
+
+            # --- Próximo Comando ---
+            Write-Host '--- Proximo Comando ---' -ForegroundColor Green
+            `$featCount  = `$json.features.Count
+            `$st         = `$json.status
+            `$temArch    = Test-Path '$ProjectDir\docs\architecture.md'
+            `$temReq     = Test-Path '$ProjectDir\docs\requirements.md'
+            `$temStories = Test-Path '$ProjectDir\docs\user-stories.md'
+            `$temRecup   = (`$json.features | Where-Object { `$_.status -eq 'em_recuperacao' }).Count -gt 0
+
+            `$cmd  = ''
+            `$hint = ''
+
+            # Checa pipeline.log: aguardando_aprovacao só conta se não foi respondido depois
+            if (Test-Path '$PipelineLog') {
+                `$linhas = @(Get-Content '$PipelineLog' -Encoding UTF8)
+                `$idxAguardando = -1
+                for (`$i = 0; `$i -lt `$linhas.Count; `$i++) {
+                    if (`$linhas[`$i] -match 'aguardando_aprovacao') { `$idxAguardando = `$i }
+                }
+                if (`$idxAguardando -ge 0) {
+                    `$respondido = `$false
+                    for (`$i = `$idxAguardando + 1; `$i -lt `$linhas.Count; `$i++) {
+                        if (`$linhas[`$i] -match '\[HUMANO\]') { `$respondido = `$true; break }
+                    }
+                    if (-not `$respondido) {
+                        `$cmd  = '/aprovar    (ou /reprovar <motivo>)'
+                        `$hint = 'Artefato gerado aguarda sua revisao e aprovacao'
+                    }
+                }
+            }
+
+            if (-not `$cmd) {
+                if     (`$st -eq 'aguardando_inicializacao') {
+                    `$cmd = 'claude'; `$hint = 'Abrir Claude Code'
+                } elseif (`$st -eq 'em_planejamento') {
+                    if (`$featCount -eq 0) {
+                        if (-not `$temArch) {
+                            if (-not `$temReq) {
+                                if (-not `$temStories) { `$cmd = '/po-processar-demanda'; `$hint = 'Processar demanda do cliente (user-stories ainda nao gerado)' }
+                                else                   { `$cmd = '/gerar-requirements';   `$hint = 'Gerar Requisitos (user-stories existe)' }
+                            } else                     { `$cmd = '/gerar-arquitetura';     `$hint = 'Gerar Arquitetura (requirements existe)' }
+                        } else                         { `$cmd = '/fabricar-software --retomar'; `$hint = 'Gerar Backlog e iniciar desenvolvimento (architecture existe)' }
+                    } else                             { `$cmd = '/fabricar-software --retomar'; `$hint = 'Retomar pipeline de desenvolvimento' }
+                } elseif (`$temRecup) {
+                    `$cmd = '/fabricar-software --retomar'; `$hint = 'Retomar feature em recuperacao'
+                } elseif (`$st -in @('em_desenvolvimento','em_testes')) {
+                    `$cmd = '/fabricar-software --retomar'; `$hint = 'Retomar pipeline'
+                } elseif (`$st -eq 'concluido') {
+                    `$cmd = '/deploy'; `$hint = 'Deploy em producao'
+                }
+            }
+
+            if (`$cmd) {
+                Write-Host "  `$cmd" -ForegroundColor Green
+                if (`$hint) { Write-Host "  (`$hint)" -ForegroundColor DarkGray }
+            } else {
+                Write-Host '  (nenhuma acao pendente detectada)' -ForegroundColor DarkGray
+            }
             Write-Host ''
 
             # Feature em execução no momento
@@ -335,7 +395,7 @@ $utf8Bom = New-Object System.Text.UTF8Encoding $true
 $PS = "powershell.exe"
 
 $wtArgs = (
-    "new-tab",
+    "--window", "new", "new-tab",
         "--title", '"Claude Code - nt-usina"',
         "-d", "`"$ProjectDir`"",
         $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp1`"",
