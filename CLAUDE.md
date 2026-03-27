@@ -90,8 +90,9 @@ Exemplos:
 ```yaml
 operacao:
   modo: validacao   # validacao | autonomo
-  # validacao  → Orquestrador pausa após cada etapa e aguarda aprovação humana
-  #              Use durante fase inicial de testes e calibração da fábrica
+  # validacao  → Orquestrador executa uma etapa, exibe resumo e ENCERRA
+  #              Operador revisa o artefato, digita /aprovar ou /reprovar,
+  #              depois re-executa /fabricar-software --retomar para avançar
   # autonomo   → Loop contínuo sem intervenção; apenas erros críticos pausam
   #              Use após validação e confiança estabelecida no pipeline
 ```
@@ -127,23 +128,23 @@ Cada agente recebe **apenas** o que precisa para sua tarefa. Nunca o projeto int
 
 ### Arquitetura de contexto do Orquestrador
 
-O Orquestrador usa **Task() para todos os sub-agentes** e **auto-reinício a cada 10 features**:
+O Orquestrador usa a **`Agent` tool para todos os sub-agentes** e **checkpoint a cada 10 features**:
 
 **Por iteração — o Orquestrador lê APENAS:**
 - `backlog\indice.json` — estado do pipeline
 - Campo `operacao.modo` do `CLAUDE.md` — `validacao` ou `autonomo`
 
-**Por iteração — o Orquestrador dispara via Task():**
-- `Task(coding-agent, {feature_id, trecho_arquitetura, skills_necessarias})`
-- `Task(testing-agent, {feature_id, criterios_aceite})`
+**Por iteração — o Orquestrador despacha via `Agent` tool:**
+- `Agent(coding-agent, prompt contendo: feature_id + trecho_arquitetura + skills_necessarias)`
+- `Agent(testing-agent, prompt contendo: feature_id + criterios_aceite)`
 - Recebe de volta **apenas**: `{feature_id, status_resultado, resumo_curto}`
 - Sub-agentes **nunca** retornam código, logs completos ou artefatos volumosos
 - Todo conteúdo produzido fica em disco (`docs\bugs\`, `docs\testes\`)
 
-**Auto-reinício a cada 10 features processadas:**
+**Checkpoint a cada 10 features processadas:**
 - "Processada" = status alterado para `concluida` ou `bloqueada` nesta sessão
-- Ao atingir o limiar: grava checkpoint em `indice.json` → encerra → re-invoca `/fabricar-software --retomar`
-- Nova instância começa com context window zerada e continua do ponto exato
+- Ao atingir o limiar: grava checkpoint em `indice.json` → exibe sinal de reinício → ENCERRA
+- Operador executa `/fabricar-software --retomar` → nova instância com context window zerada continua do ponto exato
 
 **Estado do pipeline vive em disco — nunca na memória do processo.**
 
@@ -226,7 +227,7 @@ artefatos:
 
 ### 9.7 Modo de operação
 - Verificar `operacao.modo` neste arquivo antes de prosseguir entre etapas
-- Em modo `validacao`: exibir resumo do artefato gerado e aguardar `/aprovar` ou `/reprovar`
+- Em modo `validacao`: exibir resumo do artefato gerado e ENCERRAR; operador digita `/aprovar` ou `/reprovar` e re-executa `/fabricar-software --retomar`
 - Em modo `autonomo`: prosseguir automaticamente; registrar log em `docs\pipeline.log`
 
 ---
@@ -316,7 +317,7 @@ variaveis_de_ambiente:
 |---|---|---|
 | — | GitHub Flow | Simplicidade: main + feature branches |
 | — | Execução sequencial (1 feature por vez) | Simplicidade na fase inicial; paralelismo previsto para fases futuras |
-| — | Orquestrador via Task() + auto-reinício a cada 10 features | Task() isola sub-agentes; auto-reinício previne degradação de contexto em projetos longos |
+| — | Orquestrador via `Agent` tool + checkpoint a cada 10 features | `Agent` tool isola sub-agentes; checkpoint previne degradação de contexto em projetos longos; operador re-executa `/fabricar-software --retomar` |
 | — | Sub-agentes retornam apenas metadados | Evita que resultados volumosos contaminem o contexto do Orquestrador |
 
 ---

@@ -109,25 +109,25 @@ backlog\indice.json + backlog\grupo-*.json  [modo validacao: /aprovar]
         │
         ├── Cria branch: git checkout -b feature/<grupo>-<id>-<descricao>
         │
-        ├── Task(coding-agent)
+        ├── Agent(coding-agent)
         │     Recebe: {feature_id, trecho_arquitetura, skills}
         │     Produz: código em disco
         │     Retorna: {status, resumo_curto}
         │
         ├── git commit + push
         │
-        ├── Task(testing-agent)               [modo validacao: /aprovar]
+        ├── Agent(testing-agent)              [modo validacao: /aprovar → --retomar]
         │     Recebe: {feature_id, criterios_aceite}
         │     Produz: relatório em docs\testes\
         │     Retorna: {status: aprovado|reprovado, resumo_curto}
         │
         ├── APROVADO  → status "concluida" → PR → próxima feature
         └── REPROVADO → cria docs\bugs\bug-*.md
-                      → Task(coding-agent, modo: "corrigir")
+                      → Agent(coding-agent, modo: "corrigir")
                       → repete ciclo de testes
                                 │
                                 ▼ (todas as features concluídas)
-                        Task(deploy-agent)   [modo validacao: /aprovar]
+                        Agent(deploy-agent)  [modo validacao: /aprovar → --retomar]
 ```
 
 ---
@@ -168,7 +168,7 @@ Iniciar com: `.\scripts\Start-Usina.ps1` ou `/fabricar-tmux`
 ## Notas de Operação
 
 - `CLAUDE.md` é lido automaticamente pelo Claude Code em toda sessão
-- Agentes em `.claude/agents/` são invocados via `Task()` pelo Orquestrador
+- Agentes em `.claude/agents/` são invocados via `Agent` tool pelo Orquestrador
 - Skills em `.claude/skills/` são contexto injetável — não são agentes
 - `backlog\indice.json` é o estado central; `feature_atual` rastreia a feature em execução
 - `docs\pipeline.log` registra todas as ações em modo `autonomo`
