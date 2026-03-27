@@ -232,6 +232,42 @@ $Cmd4 = @"
 chcp 65001 | Out-Null
 Set-Location '$ProjectDir'
 
+function Get-SourceColor(`$source) {
+    switch (`$source) {
+        'HUMANO'       { return 'Magenta' }
+        'SISTEMA'      { return 'Cyan' }
+        'ANALISTA'     { return 'Blue' }
+        'ARQUITETO'    { return 'DarkCyan' }
+        'PO'           { return 'Yellow' }
+        'ORQUESTRADOR' { return 'White' }
+        default        { return 'Gray' }
+    }
+}
+
+function Get-LevelColor(`$level) {
+    switch (`$level) {
+        'INFO'  { return 'Green' }
+        'WARN'  { return 'Yellow' }
+        'ERROR' { return 'Red' }
+        'DEBUG' { return 'DarkGray' }
+        default { return 'Gray' }
+    }
+}
+
+function Write-LogLine(`$linha) {
+    `$pattern = '^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \[(\w+)\] \[(\w+)\] (.*)$'
+    if (`$linha -match `$pattern) {
+        Write-Host ('[' + `$Matches[1] + ']') -ForegroundColor DarkGray  -NoNewline
+        Write-Host ' '                                                     -NoNewline
+        Write-Host ('[' + `$Matches[2] + ']') -ForegroundColor (Get-LevelColor  `$Matches[2]) -NoNewline
+        Write-Host ' '                                                     -NoNewline
+        Write-Host ('[' + `$Matches[3] + ']') -ForegroundColor (Get-SourceColor `$Matches[3]) -NoNewline
+        Write-Host (' ' + `$Matches[4])        -ForegroundColor White
+    } else {
+        Write-Host `$linha -ForegroundColor DarkGray
+    }
+}
+
 function Show-Log {
     Clear-Host
     Write-Host '[ LOG DA APLICACAO — mais recente primeiro ]' -ForegroundColor Cyan
@@ -240,7 +276,7 @@ function Show-Log {
     Write-Host '-------------------------------------------'
     if (Test-Path '$AppLog') {
         `$linhas = Get-Content '$AppLog' -Tail 200 -Encoding UTF8
-        `$linhas[(`$linhas.Count - 1)..0] | ForEach-Object { Write-Host `$_ }
+        `$linhas[(`$linhas.Count - 1)..0] | ForEach-Object { Write-LogLine `$_ }
     } else {
         Write-Host 'Arquivo de log ainda não existe.' -ForegroundColor DarkGray
     }
@@ -265,10 +301,11 @@ while (`$true) {
 # (evita problemas de escape de strings multi-linha no wt.exe)
 # -----------------------------------------------------------------------------
 $TmpDir = [System.IO.Path]::GetTempPath()
-$Tmp1 = Join-Path $TmpDir "usina-pane1.ps1"
-$Tmp2 = Join-Path $TmpDir "usina-pane2.ps1"
-$Tmp3 = Join-Path $TmpDir "usina-pane3.ps1"
-$Tmp4 = Join-Path $TmpDir "usina-pane4.ps1"
+$TmpId  = Get-Date -Format "yyyyMMdd-HHmmss"
+$Tmp1 = Join-Path $TmpDir "usina-pane1-$TmpId.ps1"
+$Tmp2 = Join-Path $TmpDir "usina-pane2-$TmpId.ps1"
+$Tmp3 = Join-Path $TmpDir "usina-pane3-$TmpId.ps1"
+$Tmp4 = Join-Path $TmpDir "usina-pane4-$TmpId.ps1"
 
 $utf8Bom = New-Object System.Text.UTF8Encoding $true
 [System.IO.File]::WriteAllText($Tmp1, $Cmd1, $utf8Bom)
