@@ -238,7 +238,22 @@ $utf8Bom = New-Object System.Text.UTF8Encoding $true
 
 # -----------------------------------------------------------------------------
 # Monta os argumentos do Windows Terminal
-# Ordem: new-tab (P1) → split -H (P2) → move left → split -V (P3) → right → split -V (P4)
+#
+# Layout alvo (4 paineis iguais, 25% cada):
+#   ┌──────────────────────┬──────────────────────┐
+#   │  P1 - Claude Code    │  P2 - Backlog Monitor │
+#   ├──────────────────────┼──────────────────────┤
+#   │  P3 - Git Log        │  P4 - App Log         │
+#   └──────────────────────┴──────────────────────┘
+#
+# Sequencia de splits:
+#   new-tab            → P1 full (foco: P1)
+#   split-pane -V 0.50 → P2 a direita de P1 (foco: P2)
+#   move-focus left    → (foco: P1)
+#   split-pane -H 0.50 → P3 abaixo de P1 (foco: P3)
+#   move-focus right   → (foco: P2)
+#   split-pane -H 0.50 → P4 abaixo de P2 (foco: P4)
+#   move-focus previousInOrder → volta para P1
 # -----------------------------------------------------------------------------
 $PS = "powershell.exe"
 
@@ -247,17 +262,17 @@ $wtArgs = (
         "--title", '"Claude Code - nt-usina"',
         "-d", "`"$ProjectDir`"",
         $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp1`"",
-    ";", "split-pane", "-H", "--size", "0.50",
+    ";", "split-pane", "-V", "--size", "0.50",
         "--title", '"Backlog Monitor"',
         "-d", "`"$ProjectDir`"",
         $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp2`"",
     ";", "move-focus", "left",
-    ";", "split-pane", "-V", "--size", "0.50",
+    ";", "split-pane", "-H", "--size", "0.50",
         "--title", '"Git Log"',
         "-d", "`"$ProjectDir`"",
         $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp3`"",
     ";", "move-focus", "right",
-    ";", "split-pane", "-V", "--size", "0.50",
+    ";", "split-pane", "-H", "--size", "0.50",
         "--title", '"App Log"',
         "-d", "`"$ProjectDir`"",
         $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp4`"",
