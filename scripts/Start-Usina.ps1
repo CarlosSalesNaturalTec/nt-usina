@@ -95,11 +95,12 @@ if (-not (Test-Path $PipelineLog)) {
 # PAINEL 1 — Claude Code CLI
 # Exibe banner e aguarda o usuário iniciar o Claude Code manualmente
 $Cmd1 = @"
+chcp 65001 | Out-Null
 Clear-Host
-Write-Host '╔══════════════════════════════════════════╗' -ForegroundColor Cyan
-Write-Host '║   Natural Tecnologia — nt-usina          ║' -ForegroundColor Cyan
-Write-Host '║   Fábrica de Software IA                 ║' -ForegroundColor Cyan
-Write-Host '╚══════════════════════════════════════════╝' -ForegroundColor Cyan
+Write-Host '==========================================' -ForegroundColor Cyan
+Write-Host '   Natural Tecnologia - nt-usina          ' -ForegroundColor Cyan
+Write-Host '   Fabrica de Software IA                 ' -ForegroundColor Cyan
+Write-Host '==========================================' -ForegroundColor Cyan
 Write-Host ''
 Write-Host 'Projeto: $ProjectDir' -ForegroundColor Gray
 Write-Host ''
@@ -114,6 +115,7 @@ Set-Location '$ProjectDir'
 
 # PAINEL 2 — Pipeline Monitor (backlog + feature atual, atualiza a cada 2s)
 $Cmd2 = @"
+chcp 65001 | Out-Null
 Set-Location '$ProjectDir'
 while (`$true) {
     Clear-Host
@@ -174,7 +176,7 @@ while (`$true) {
                     'em_recuperacao'           { 'Magenta' }
                     default                    { 'DarkGray' }
                 }
-                Write-Host ('  [' + `$f.id + '] ' + `$f.nome.PadRight(30) + ' → ' + `$f.status) -ForegroundColor `$cor
+                Write-Host ('  [' + `$f.id + '] ' + `$f.nome.PadRight(30) + ' -> ' + `$f.status) -ForegroundColor `$cor
             }
         } catch {
             Write-Host 'Erro ao ler indice.json — aguardando...' -ForegroundColor Red
@@ -190,6 +192,7 @@ while (`$true) {
 
 # PAINEL 3 — Git log (atualiza a cada 5 segundos)
 $Cmd3 = @"
+chcp 65001 | Out-Null
 Set-Location '$ProjectDir'
 while (`$true) {
     Clear-Host
@@ -209,12 +212,29 @@ while (`$true) {
 
 # PAINEL 4 — Log da aplicação (tail em tempo real)
 $Cmd4 = @"
+chcp 65001 | Out-Null
 Set-Location '$ProjectDir'
-Write-Host '[ LOG DA APLICAÇÃO ]' -ForegroundColor Cyan
+Write-Host '[ LOG DA APLICACAO ]' -ForegroundColor Cyan
 Write-Host 'Monitorando: $AppLog' -ForegroundColor Gray
 Write-Host '-------------------------------------------'
 Get-Content '$AppLog' -Wait -Tail 50 -Encoding UTF8
 "@
+
+# -----------------------------------------------------------------------------
+# Salva comandos de cada painel em arquivos temporários
+# (evita problemas de escape de strings multi-linha no wt.exe)
+# -----------------------------------------------------------------------------
+$TmpDir = [System.IO.Path]::GetTempPath()
+$Tmp1 = Join-Path $TmpDir "usina-pane1.ps1"
+$Tmp2 = Join-Path $TmpDir "usina-pane2.ps1"
+$Tmp3 = Join-Path $TmpDir "usina-pane3.ps1"
+$Tmp4 = Join-Path $TmpDir "usina-pane4.ps1"
+
+$utf8Bom = New-Object System.Text.UTF8Encoding $true
+[System.IO.File]::WriteAllText($Tmp1, $Cmd1, $utf8Bom)
+[System.IO.File]::WriteAllText($Tmp2, $Cmd2, $utf8Bom)
+[System.IO.File]::WriteAllText($Tmp3, $Cmd3, $utf8Bom)
+[System.IO.File]::WriteAllText($Tmp4, $Cmd4, $utf8Bom)
 
 # -----------------------------------------------------------------------------
 # Monta os argumentos do Windows Terminal
@@ -224,23 +244,23 @@ $PS = "powershell.exe"
 
 $wtArgs = (
     "new-tab",
-        "--title", "Claude Code | nt-usina",
-        "-d", $ProjectDir,
-        $PS, "-NoExit", "-Command", $Cmd1,
-    ";", "split-pane", "-H", "--size", "0.40",
-        "--title", "Backlog Monitor",
-        "-d", $ProjectDir,
-        $PS, "-NoExit", "-Command", $Cmd2,
+        "--title", '"Claude Code - nt-usina"',
+        "-d", "`"$ProjectDir`"",
+        $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp1`"",
+    ";", "split-pane", "-H", "--size", "0.50",
+        "--title", '"Backlog Monitor"',
+        "-d", "`"$ProjectDir`"",
+        $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp2`"",
     ";", "move-focus", "left",
-    ";", "split-pane", "-V", "--size", "0.35",
-        "--title", "Git Log",
-        "-d", $ProjectDir,
-        $PS, "-NoExit", "-Command", $Cmd3,
+    ";", "split-pane", "-V", "--size", "0.50",
+        "--title", '"Git Log"',
+        "-d", "`"$ProjectDir`"",
+        $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp3`"",
     ";", "move-focus", "right",
-    ";", "split-pane", "-V", "--size", "0.35",
-        "--title", "App Log",
-        "-d", $ProjectDir,
-        $PS, "-NoExit", "-Command", $Cmd4,
+    ";", "split-pane", "-V", "--size", "0.50",
+        "--title", '"App Log"',
+        "-d", "`"$ProjectDir`"",
+        $PS, "-NoExit", "-ExecutionPolicy", "Bypass", "-File", "`"$Tmp4`"",
     ";", "move-focus", "previousInOrder"
 )
 
