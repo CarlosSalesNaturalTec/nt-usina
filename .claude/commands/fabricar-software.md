@@ -7,6 +7,8 @@ Entry point da fábrica nt-usina. Inicia ou retoma o pipeline completo de desenv
 ```
 /fabricar-software
 /fabricar-software --retomar
+/fabricar-software --testes=on
+/fabricar-software --retomar --testes=on
 ```
 
 ## O que este comando faz
@@ -101,6 +103,7 @@ Só pausa em caso de erro crítico ou ao atingir o checkpoint de 10 features.
 | Flag | Descrição |
 |---|---|
 | `--retomar` | Retoma a partir do último checkpoint gravado em `indice.json` |
+| `--testes=on` | Habilita a etapa de testes no pipeline. Por padrão, testes são **desabilitados**. Quando presente, o Orquestrador invoca o `testing-agent` após cada feature concluída. O valor é persistido em `indice.json` — em `--retomar`, a flag é lida do estado salvo (pode ser sobrescrita passando `--testes=on` novamente). |
 
 ## Observações
 

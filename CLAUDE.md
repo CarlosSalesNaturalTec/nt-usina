@@ -166,6 +166,7 @@ pipeline:
   features_bloqueadas: 0
   feature_atual: null         # ID da feature em execução no momento
   features_processadas_sessao: 0  # Contador para auto-reinício (limiar: 10)
+  testes_habilitado: false    # Etapa de testes. Ativar com /fabricar-software --testes=on
 ```
 
 ---
@@ -270,7 +271,7 @@ artefatos:
 
 | Comando | Descrição |
 |---|---|
-| `/fabricar-software` | Entry point — inicia ou retoma o pipeline |
+| `/fabricar-software` | Entry point — inicia ou retoma o pipeline. Flags: `--retomar`, `--testes=on` |
 | `/aprovar` | Aprova etapa atual (modo validacao) |
 | `/reprovar <motivo>` | Reprova etapa atual com motivo (modo validacao) |
 | `/set-modo validacao\|autonomo` | Altera modo de operação |

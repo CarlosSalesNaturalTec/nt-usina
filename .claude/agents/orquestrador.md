@@ -230,6 +230,17 @@ Uma feature por vez. Concluir completamente (coding → testes → merge) antes 
 ### Passo 1 — Detectar modo de invocação
 
 ```
+# Detectar flag --testes=on no comando recebido
+SE flag --testes=on presente:
+  → pipeline.testes_habilitado = true
+  → Gravar indice.json imediatamente
+SE flag --testes=on ausente E --retomar presente:
+  → Manter pipeline.testes_habilitado conforme gravado em indice.json
+SE flag --testes=on ausente E invocação inicial:
+  → pipeline.testes_habilitado = false (padrão)
+  → Gravar indice.json
+
+# Detectar modo de continuidade
 SE log mostra última ação como aprovada E flag --retomar presente:
   → Ler indice.json → identificar próxima ação → ir para passo correto
 
@@ -319,7 +330,20 @@ ENQUANTO existir feature com status não-terminal:
         → Agent(git-specialist, {operacao: "commit_push", ...})
         → Agent(git-specialist, {operacao: "abrir_pr", ...})
         → feature.status = "desenvolvimento_concluido"
-        → Gravar indice.json → ir para [7]
+        → Gravar indice.json
+
+        SE pipeline.testes_habilitado == true:
+          → ir para [7]
+        SENÃO (testes desabilitados — padrão):
+          → Registrar [INFO] TESTES IGNORADOS (testes_habilitado=false)
+          → Agent(git-specialist, {operacao: "merge_main", ...})
+          → feature.status = "concluida"
+          → feature.concluido_em = timestamp
+          → pipeline.feature_atual = null
+          → pipeline.features_processadas_sessao++
+          → Gravar indice.json
+          → [modo validacao: PARAR com bloco de aprovação]
+          → Verificar auto-reinício [9] → voltar a [1]
 
       "erro":
         → feature.status = "bloqueada"
@@ -327,11 +351,11 @@ ENQUANTO existir feature com status não-terminal:
         → pipeline.feature_atual = null
         → Registrar erro → Gravar indice.json → voltar a [1]
 
-  [7] TESTING AGENT
+  [7] TESTING AGENT  ← executado apenas quando pipeline.testes_habilitado == true
       → feature.status = "em_testes" → Gravar indice.json
       Agent(testing-agent, payload)
 
-  [8] RETORNO DO TESTING AGENT
+  [8] RETORNO DO TESTING AGENT  ← executado apenas quando pipeline.testes_habilitado == true
       {feature_id, status_resultado, resumo_curto}
 
       "aprovado":
